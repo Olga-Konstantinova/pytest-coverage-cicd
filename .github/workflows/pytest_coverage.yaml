@@ -30,7 +30,7 @@ jobs:
         run: chmod -R 777 ${{ github.workspace }}
       - name: Run Pytest & Get Coverage Files
         env:
-          TEST_COVERAGE_CODEBASE_FOLDER: "glue"
+          TEST_COVERAGE_CODEBASE_FOLDER: "src"
           TEST_COVERAGE_TESTS_FOLDER: "tests/"
         run: |
           # install packages
