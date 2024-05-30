@@ -1,0 +1,72 @@
+name: "Pytest & Coverage"
+on:
+  pull_request:
+    branches:
+      - main
+      - release/*
+    paths:
+      - src/utils/**
+      - tests/**
+      - .github/workflows/pytest_coverage.yaml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest-and-coverage:
+    if: github.event_name == 'pull_request'
+    permissions:
+      packages: read
+      contents: write
+      id-token: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    name: Pytest Coverage
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+      - name: Set Permissions for Workspace
+        run: chmod -R 777 ${{ github.workspace }}
+      - name: Run Pytest & Get Coverage Files
+        env:
+          TEST_COVERAGE_CODEBASE_FOLDER: "glue"
+          TEST_COVERAGE_TESTS_FOLDER: "tests/"
+        run: |
+          # install packages
+          pip3 install moto[dynamodb] chispa pytest-xdist pytest pytest-cov coverage
+          # run tests to get report files and later an overview
+          python3 -m pytest --cov-report=term-missing:skip-covered --junitxml=${{ github.workspace }}/pytest-coverage-comment.xml --cov=${{ env.TEST_COVERAGE_CODEBASE_FOLDER }} ${{ env.TEST_COVERAGE_TESTS_FOLDER }} | tee ${{ github.workspace }}/pytest-coverage-comment.txt
+          # get coverage reports saved to txt
+          python3 -m coverage report -m > "${{ github.workspace }}/coverage_report_full.txt"
+          python3 -m coverage report -m | tail -n +3 | awk ' !/^[-]+$/ && !/TOTAL/ {print $1, $4}' > "${{ github.workspace }}/coverage_report_filtered.txt"
+      - name: Process Coverage Files
+        env:
+          TOTAL_COVERAGE_THRESHOLD: 0
+          INDIVIDUAL_COVERAGE_THRESHOLD: 0
+          GITHUB_WORKSPACE_PATH: ${{ github.workspace }}
+        run: |
+          chmod +x ${{ github.workspace }}/.github/workflows/process_pytest_coverage.sh
+          ${{ github.workspace }}/.github/workflows/process_pytest_coverage.sh
+      - name: Create Pytest Coverage Comment
+        id: coverageComment
+        uses: MishaKav/pytest-coverage-comment@v1.1.51
+        with:
+          pytest-coverage-path: ${{ github.workspace }}/pytest-coverage-comment.txt
+          junitxml-path: ${{ github.workspace }}/pytest-coverage-comment.xml
+      - name: Raise Pytest Failures
+        run: |
+          if (( ${{ steps.coverageComment.outputs.failures }} > 0 )); then
+            echo "From ${{ steps.coverageComment.outputs.tests }} Pytest(s), ${{ steps.coverageComment.outputs.failures }} failed. Check step: Run Pytest & Get Coverage Files"
+            exit 1
+          else
+            echo "No Pytest failures occured"
+          fi
+      - name: Raise Pytest Coverage Failures
+        run: |
+          if grep -q 'INDIVIDUAL_COVERAGE_PASSED=true' ${{ github.workspace }}/coverage_status.txt && grep -q 'TOTAL_COVERAGE_PASSED=true' ${{ github.workspace }}/coverage_status.txt; then
+            echo "Individual and total coverage above the required level"
+          else
+            echo "The individual or total coverage is below the required level. For more information refer to the comment on the PR or step Process Coverage Files"
+            exit 1
+          fi
