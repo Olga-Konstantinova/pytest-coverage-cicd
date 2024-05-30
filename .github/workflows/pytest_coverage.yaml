@@ -42,11 +42,10 @@ jobs:
           python3 -m coverage report -m | tail -n +3 | awk ' !/^[-]+$/ && !/TOTAL/ {print $1, $4}' > "${{ github.workspace }}/coverage_report_filtered.txt"
       - name: Process Coverage Files
         env:
-          TOTAL_COVERAGE_THRESHOLD: 0
-          INDIVIDUAL_COVERAGE_THRESHOLD: 0
+          TOTAL_COVERAGE_THRESHOLD: 95
+          INDIVIDUAL_COVERAGE_THRESHOLD: 95
           GITHUB_WORKSPACE_PATH: ${{ github.workspace }}
         run: |
-          chmod +x ${{ github.workspace }}/.github/workflows/process_pytest_coverage.sh
           ${{ github.workspace }}/.github/workflows/process_pytest_coverage.sh
       - name: Create Pytest Coverage Comment
         id: coverageComment
