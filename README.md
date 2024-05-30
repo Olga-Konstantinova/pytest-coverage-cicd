@@ -6,4 +6,4 @@ Pytest coverage package used: pytest-cov; open source PR commentator can be foun
 
 ## Usage
 
-The Github Action is stored in .github/workflows/pytest_coverage.yaml; process_pytest_coverage.sh is a custom made file from processing the coverage report
+The Github Action is stored in .github/workflows/pytest_coverage.yaml; process_pytest_coverage.sh is a custom made file for processing the coverage report and enforcing the coverage levels
